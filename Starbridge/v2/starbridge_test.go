@@ -1,4 +1,4 @@
-package StarBridge
+package Starbridge
 
 import "testing"
 
