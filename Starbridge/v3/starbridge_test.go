@@ -2,6 +2,6 @@ package Starbridge
 
 import "testing"
 
-func TestStarBridge(t *testing.T) {
+func TestStarbridge(t *testing.T) {
 
 }

@@ -36,7 +36,7 @@ type starbridgeTransportListener struct {
 	config   ServerConfig
 }
 
-func newStarBridgeTransportListener(listener *net.TCPListener, config ServerConfig) *starbridgeTransportListener {
+func newStarbridgeTransportListener(listener *net.TCPListener, config ServerConfig) *starbridgeTransportListener {
 	return &starbridgeTransportListener{listener: listener, config: config}
 }
 
@@ -74,7 +74,7 @@ func (config ServerConfig) Listen(address string) (net.Listener, error) {
 		return nil, err
 	}
 
-	return newStarBridgeTransportListener(ln, config), nil
+	return newStarbridgeTransportListener(ln, config), nil
 }
 
 //Dial connects to the address on the named network
@@ -139,7 +139,7 @@ func (transport *TransportServer) Listen() (net.Listener, error) {
 		return nil, err
 	}
 
-	return newStarBridgeTransportListener(ln, transport.Config), nil
+	return newStarbridgeTransportListener(ln, transport.Config), nil
 }
 
 func NewClientConnection(conn net.Conn) (*replicant.Connection, error) {
@@ -165,8 +165,8 @@ func NewReplicantServerConnectionState(polishServer polish.Server, conn net.Conn
 func getClientConfig() replicant.ClientConfig {
 	rand.Seed(time.Now().UnixNano())
 
-	clientDesc, serverDesc := createStarBridgeToneburstDescriptions()
-	clientInstance := createStarBridgeToneburstClientInstance(clientDesc)
+	clientDesc, serverDesc := createStarbridgeToneburstDescriptions()
+	clientInstance := createStarbridgeToneburstClientInstance(clientDesc)
 
 	// The client speaks second.
 	monotoneClientConfig := toneburst.MonotoneConfig{
@@ -181,8 +181,8 @@ func getClientConfig() replicant.ClientConfig {
 func getServerConfig() replicant.ServerConfig {
 	rand.Seed(time.Now().UnixNano())
 
-	clientDesc, serverDesc := createStarBridgeToneburstDescriptions()
-	serverInstance := createStarBridgeToneburstServerInstance(serverDesc)
+	clientDesc, serverDesc := createStarbridgeToneburstDescriptions()
+	serverInstance := createStarbridgeToneburstServerInstance(serverDesc)
 
 	// The server speaks first.
 	monotoneServerConfig := toneburst.MonotoneConfig{
@@ -198,7 +198,7 @@ func getServerConfig() replicant.ServerConfig {
 // Instances are using for sending, they are fully specified.
 // Note: this is where arguments would go if we add some
 //TODO: split into two functions
-func createStarBridgeToneburstClientInstance(clientDesc *monolith.Description) *monolith.Instance {
+func createStarbridgeToneburstClientInstance(clientDesc *monolith.Description) *monolith.Instance {
 	clientInstance := monolith.Instance{
 		Desc: *clientDesc,
 		Args: monolith.NewEmptyArgs(),
@@ -207,7 +207,7 @@ func createStarBridgeToneburstClientInstance(clientDesc *monolith.Description) *
 	return &clientInstance
 }
 
-func createStarBridgeToneburstServerInstance(serverDesc *monolith.Description) *monolith.Instance {
+func createStarbridgeToneburstServerInstance(serverDesc *monolith.Description) *monolith.Instance {
 	serverInstance := monolith.Instance{
 		Desc: *serverDesc,
 		Args: monolith.NewEmptyArgs(),
@@ -218,8 +218,8 @@ func createStarBridgeToneburstServerInstance(serverDesc *monolith.Description) *
 
 // Generate the descriptions using the parts.
 // Descriptions are for receiving, they are partially specified as some elements are not know ahead of time.
-func createStarBridgeToneburstDescriptions() (*monolith.Description, *monolith.Description) {
-	clientParts, serverParts := createStarBridgeToneburstParts()
+func createStarbridgeToneburstDescriptions() (*monolith.Description, *monolith.Description) {
+	clientParts, serverParts := createStarbridgeToneburstParts()
 
 	clientDesc := monolith.Description{clientParts}
 	serverDesc := monolith.Description{serverParts}
@@ -233,10 +233,10 @@ func createStarBridgeToneburstDescriptions() (*monolith.Description, *monolith.D
 // The client and server take turns sending, one part at a time.
 // FIXME: Currently, this config just has one part in each direction, but this probably needs to change.
 // Note: each part is an individual packet of the client-server convo
-func createStarBridgeToneburstParts() ([]monolith.Monolith, []monolith.Monolith) {
-	part1 := createStarBridgeToneburstServerBytesPart1()
-	part3 := createStarBridgeToneburstServerBytesPart3()
-	part5 := createStarBridgeToneburstServerBytesPart5()
+func createStarbridgeToneburstParts() ([]monolith.Monolith, []monolith.Monolith) {
+	part1 := createStarbridgeToneburstServerBytesPart1()
+	part3 := createStarbridgeToneburstServerBytesPart3()
+	part5 := createStarbridgeToneburstServerBytesPart5()
 
 	serverParts := []monolith.Monolith{
 		part1,
@@ -244,8 +244,8 @@ func createStarBridgeToneburstParts() ([]monolith.Monolith, []monolith.Monolith)
 		part5,
 	}
 
-	part2 := createStarBridgeToneburstClientBytesPart2()
-	part4 := createStarBridgeToneburstClientBytesPart4()
+	part2 := createStarbridgeToneburstClientBytesPart2()
+	part4 := createStarbridgeToneburstClientBytesPart4()
 
 	clientParts := []monolith.Monolith{
 		part2,
@@ -262,7 +262,7 @@ func createStarBridgeToneburstParts() ([]monolith.Monolith, []monolith.Monolith)
 // b. mail.imc.org - variable
 // c. SMTP - fixed
 // d. service ready - ???
-func createStarBridgeToneburstServerBytesPart1() monolith.StringsPart {
+func createStarbridgeToneburstServerBytesPart1() monolith.StringsPart {
 
 	serverPart := monolith.StringsPart{
 		Items: []monolith.StringType{
@@ -281,7 +281,7 @@ func createStarBridgeToneburstServerBytesPart1() monolith.StringsPart {
 // This part has 4 subsections:
 // a. EHLO - fixed
 // b. mail.example.com - variable
-func createStarBridgeToneburstClientBytesPart2() monolith.StringsPart {
+func createStarbridgeToneburstClientBytesPart2() monolith.StringsPart {
 	clientPart := monolith.StringsPart{
 		Items: []monolith.StringType{
 			monolith.FixedStringType{String: "EHLO "},
@@ -307,7 +307,7 @@ func createStarBridgeToneburstClientBytesPart2() monolith.StringsPart {
    c. "offers a warm hug of welcome" - variable
    c. 250-8BITMIME...etc. - variable. There are several options for lines that can appear here.
 */
-func createStarBridgeToneburstServerBytesPart3() monolith.StringsPart {
+func createStarbridgeToneburstServerBytesPart3() monolith.StringsPart {
 	serverPart := monolith.StringsPart{
 		Items: []monolith.StringType{
 			monolith.FixedStringType{String: "250-"},
@@ -335,7 +335,7 @@ func createStarBridgeToneburstServerBytesPart3() monolith.StringsPart {
    This part is only one section.
    a.STARTTLS - fixed
 */
-func createStarBridgeToneburstClientBytesPart4() monolith.StringsPart {
+func createStarbridgeToneburstClientBytesPart4() monolith.StringsPart {
 	clientPart := monolith.StringsPart{
 		Items: []monolith.StringType{
 			monolith.FixedStringType{String: "STARTTLS\r\n"},
@@ -352,7 +352,7 @@ func createStarBridgeToneburstClientBytesPart4() monolith.StringsPart {
    a. 220 - FIXED
    b. "Go ahead" - variable
 */
-func createStarBridgeToneburstServerBytesPart5() monolith.StringsPart {
+func createStarbridgeToneburstServerBytesPart5() monolith.StringsPart {
 	serverPart := monolith.StringsPart{
 		Items: []monolith.StringType{
 			monolith.FixedStringType{String: "220 "},
