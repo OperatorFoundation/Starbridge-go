@@ -1,11 +1,11 @@
 package Starbridge
 
 import (
+	replicant "github.com/OperatorFoundation/Replicant-go/Replicant/v3"
+	"github.com/OperatorFoundation/Replicant-go/Replicant/v3/polish"
+	"github.com/OperatorFoundation/Replicant-go/Replicant/v3/toneburst"
 	"github.com/OperatorFoundation/monolith-go/monolith"
 	pt "github.com/OperatorFoundation/shapeshifter-ipc/v3"
-	replicant "github.com/OperatorFoundation/shapeshifter-transports/transports/Replicant/v2"
-	"github.com/OperatorFoundation/shapeshifter-transports/transports/Replicant/v2/polish"
-	"github.com/OperatorFoundation/shapeshifter-transports/transports/Replicant/v2/toneburst"
 	"golang.org/x/net/proxy"
 	"math/rand"
 	"net"
