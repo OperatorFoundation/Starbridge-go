@@ -2,6 +2,7 @@ package Starbridge
 
 import (
 	"encoding/hex"
+	"errors"
 	"net"
 	"strconv"
 
@@ -55,19 +56,26 @@ func (listener *starbridgeTransportListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	host, portString, splitError := net.SplitHostPort(listener.address)
 	if splitError != nil {
 		return nil, splitError
 	}
+
 	port, intError := strconv.Atoi(portString)
 	if intError != nil {
 		return nil, intError
 	}
+
+	if len(listener.config.ServerPersistentPrivateKey) != 64 {
+		return nil, errors.New("incorrect key size")
+	}
+
 	keyBytes, keyError := hex.DecodeString(listener.config.ServerPersistentPrivateKey)
 	if keyError != nil {
 		return nil, keyError
 	}
+
 	replicantConfig := getServerConfig(host, port, keyBytes)
 
 	return NewServerConnection(replicantConfig, conn)
@@ -79,7 +87,7 @@ func (listener *starbridgeTransportListener) Close() error {
 	return listener.listener.Close()
 }
 
-//Listen checks for a working connection
+// Listen checks for a working connection
 func (config ServerConfig) Listen(address string) (net.Listener, error) {
 	addr, resolveErr := pt.ResolveAddr(address)
 	if resolveErr != nil {
@@ -94,26 +102,35 @@ func (config ServerConfig) Listen(address string) (net.Listener, error) {
 	return newStarbridgeTransportListener(address, ln, config), nil
 }
 
-//Dial connects to the address on the named network
+// Dial connects to the address on the named network
 func (config ClientConfig) Dial(address string) (net.Conn, error) {
 	conn, dialErr := net.Dial("tcp", address)
 	if dialErr != nil {
 		return nil, dialErr
 	}
+
 	host, portString, splitError := net.SplitHostPort(config.Address)
 	if splitError != nil {
 		return nil, splitError
 	}
+
 	port, intError := strconv.Atoi(portString)
 	if intError != nil {
 		return nil, intError
 	}
+
+	if len(config.ServerPersistentPublicKey) != 64 {
+		return nil, errors.New("incorrect key size")
+	}
+
 	keyBytes, keyError := hex.DecodeString(config.ServerPersistentPublicKey)
 	if keyError != nil {
 		return nil, keyError
 	}
+
 	replicantConfig := getClientConfig(host, port, keyBytes)
 	transportConn, err := NewClientConnection(replicantConfig, conn)
+
 	if err != nil {
 		if conn != nil {
 			_ = conn.Close()
@@ -152,16 +169,24 @@ func (transport *TransportClient) Dial() (net.Conn, error) {
 	if splitError != nil {
 		return nil, splitError
 	}
+
 	port, intError := strconv.Atoi(portString)
 	if intError != nil {
 		return nil, intError
 	}
+
+	if len(transport.Config.ServerPersistentPublicKey) != 64 {
+		return nil, errors.New("incorrect key size")
+	}
+
 	keyBytes, keyError := hex.DecodeString(transport.Config.ServerPersistentPublicKey)
 	if keyError != nil {
 		return nil, keyError
 	}
+
 	replicantConfig := getClientConfig(host, port, keyBytes)
 	transportConn, err := NewClientConnection(replicantConfig, conn)
+
 	if err != nil {
 		_ = dialConn.Close()
 		return nil, err
@@ -215,7 +240,7 @@ func getClientConfig(host string, port int, serverPublicKey []byte) replicant.Cl
 		Toneburst: toneburstClientConfig,
 		Polish:    polishClientConfig,
 	}
-	
+
 	return clientConfig
 }
 
