@@ -1,7 +1,88 @@
 package Starbridge
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestStarbridge(t *testing.T) {
+	addr := "127.0.0.1:1234"
 
+	clientConfig := ClientConfig {
+		Address: addr,
+		ServerPersistentPublicKey: "d089c225ef8cda8d477a586f062b31a756270124d94944e458edf1a9e1e41ed6",
+	}
+	serverConfig := ServerConfig {
+		ServerPersistentPrivateKey: "dd5e9e88d13e66017eb2087b128c1009539d446208f86173e30409a898ada148",
+	}
+
+	listener, listenError := serverConfig.Listen(addr)
+	if listenError != nil {
+		fmt.Println(listenError)
+		t.Fail()
+		return
+	}
+
+	go func() {
+		fmt.Printf("listener type: %T\n", listener)
+		serverConn, serverConnError := listener.Accept()
+		if serverConnError != nil {
+			fmt.Println(serverConnError)
+			t.Fail()
+			return
+		}
+		if serverConn == nil {
+			fmt.Println("serverConn is nil")
+			t.Fail()
+			return
+		}
+
+		buffer := make([]byte, 4)
+		numBytesRead, readError := serverConn.Read(buffer)
+		if readError != nil {
+			fmt.Println(readError)
+			t.Fail()
+			return
+		}
+		fmt.Printf("number of bytes read on server: %d\n", numBytesRead)
+		fmt.Printf("serverConn type: %T\n", serverConn)
+
+		// Send a response back to person contacting us.
+		numBytesWritten, writeError := serverConn.Write([]byte{0xFF, 0xFF, 0xFF, 0xFF})
+		if writeError != nil {
+			fmt.Println(writeError)
+			t.Fail()
+			return
+		}
+		fmt.Printf("number of bytes written on server: %d\n", numBytesWritten)
+
+		_ = listener.Close()
+	}()
+
+	clientConn, clientConnError := clientConfig.Dial(addr)
+	if clientConnError != nil {
+		fmt.Println(clientConnError)
+		t.Fail()
+		return
+	}
+
+	writeBytes := []byte{0x0A, 0x11, 0xB0, 0xB1}
+	bytesWritten, writeError := clientConn.Write(writeBytes)
+	if writeError != nil {
+		fmt.Println(writeError)
+		t.Fail()
+		return
+	}
+	fmt.Printf("number of bytes written on client: %d\n", bytesWritten)
+
+	readBuffer := make([]byte, 4)
+	bytesRead, readError := clientConn.Read(readBuffer)
+	if readError != nil {
+		fmt.Println(readError)
+		t.Fail()
+		return
+	}
+	fmt.Printf("number of bytes read on client: %d\n", bytesRead)
+
+	_ = clientConn.Close()
 }
