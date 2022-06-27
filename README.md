@@ -51,6 +51,16 @@ When you build your project, it should automatically fetch the correct version o
 
 ## Testing
 
+To run the existing Starbridge test, cd into the directory containing the test file and run it
+```
+cd Starbridge-go/Starbridge/v3
+go test
+```
+
+## Usage
+
+Starbridge-go is written in the go programming language
+
 Create a Starbridge client config
 
 ```
