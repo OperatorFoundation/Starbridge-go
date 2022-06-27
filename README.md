@@ -4,7 +4,7 @@
 
 # Starbridge-go
 
-Starbridge is a transport that uses minimal information to create specific Replicant configs that use the Starburst toneburst and the DarkStar polish
+Starbridge is a Pluggable Transport that requires only minimal configuration information from the user. Under the hood, it uses the Replicant Pluggable Transport technology for network protocol obfuscation. Replicant is more complex to configure, so Starbridge is a good starting point for those wanting to use the technology to circumvent Internet cenorship, but wanting a minimal amount of setup.
 
 ## Shapeshifter
 
@@ -50,6 +50,16 @@ Please note that the import path includes "/v3" to indicate that you want to use
 When you build your project, it should automatically fetch the correct version of the transport module.
 
 ## Testing
+
+To run the existing Starbridge test, cd into the directory containing the test file and run it
+```
+cd Starbridge-go/Starbridge/v3
+go test
+```
+
+## Usage
+
+Starbridge-go is written in the go programming language
 
 Create a Starbridge client config
 
