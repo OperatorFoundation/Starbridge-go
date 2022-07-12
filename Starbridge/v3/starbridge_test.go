@@ -1,8 +1,13 @@
 package Starbridge
 
 import (
+	"crypto/elliptic"
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"testing"
+
+	"github.com/aead/ecdh"
 )
 
 func TestStarbridge(t *testing.T) {
@@ -85,4 +90,43 @@ func TestStarbridge(t *testing.T) {
 	fmt.Printf("number of bytes read on client: %d\n", bytesRead)
 
 	_ = clientConn.Close()
+}
+
+func TestKeyVerificationGoodKeys(t *testing.T) {
+	keyExchange := ecdh.Generic(elliptic.P256()) 
+	privateKey, publicKey, keyError := keyExchange.GenerateKey(rand.Reader)
+	if keyError != nil {
+		t.Fail()
+	}
+
+	if CheckPublicKey(publicKey) != nil {
+		t.Fail()
+	}
+
+	if !CheckPrivateKey(privateKey) {
+		t.Fail()
+	}
+}
+
+func TestKeyVerificationBadPublicKey(t *testing.T) {
+	publicKey := ecdh.Point{big.NewInt(9), big.NewInt(100)}
+
+	keyError := CheckPublicKey(publicKey)
+	if keyError != nil {
+		t.Fail()
+	}
+}
+
+func TestKeyVerificationBadPrivateKey(t *testing.T) {
+	keyExchange := ecdh.Generic(elliptic.P521()) 
+	privateKey, _, keyError := keyExchange.GenerateKey(rand.Reader)
+	if keyError != nil {
+		t.Fail()
+	}
+
+	result := CheckPrivateKey(privateKey)
+
+	if !result {
+		t.Fail()
+	}
 }

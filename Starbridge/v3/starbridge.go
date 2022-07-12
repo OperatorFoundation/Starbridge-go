@@ -1,27 +1,35 @@
 package Starbridge
 
 import (
+	"crypto"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"net"
 	"strconv"
+	"time"
 
 	replicant "github.com/OperatorFoundation/Replicant-go/Replicant/v3"
 	"github.com/OperatorFoundation/Replicant-go/Replicant/v3/polish"
 	"github.com/OperatorFoundation/Replicant-go/Replicant/v3/toneburst"
+	"github.com/OperatorFoundation/go-shadowsocks2/darkstar"
 	pt "github.com/OperatorFoundation/shapeshifter-ipc/v3"
+	"github.com/aead/ecdh"
 	"golang.org/x/net/proxy"
 )
 
 type TransportClient struct {
 	Config  ClientConfig
 	Address string
+	// TODO: Dialer can be removed later (both here and in dispatcher)
 	Dialer  proxy.Dialer
 }
 
 type TransportServer struct {
 	Config  ServerConfig
 	Address string
+	// TODO: Dialer can be removed later (both here and in dispatcher)
 	Dialer  proxy.Dialer
 }
 
@@ -52,11 +60,6 @@ func (listener *starbridgeTransportListener) Addr() net.Addr {
 
 // Accept waits for and returns the next connection to the listener.
 func (listener *starbridgeTransportListener) Accept() (net.Conn, error) {
-	conn, err := listener.listener.Accept()
-	if err != nil {
-		return nil, err
-	}
-
 	host, portString, splitError := net.SplitHostPort(listener.address)
 	if splitError != nil {
 		return nil, splitError
@@ -76,9 +79,25 @@ func (listener *starbridgeTransportListener) Accept() (net.Conn, error) {
 		return nil, keyError
 	}
 
+	keyCheckSuccess := CheckPrivateKey(keyBytes)
+	if !keyCheckSuccess {
+		return nil, errors.New("bad private key")
+	}
+
 	replicantConfig := getServerConfig(host, port, keyBytes)
 
-	return NewServerConnection(replicantConfig, conn)
+	conn, err := listener.listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+
+	serverConn, serverError := NewServerConnection(replicantConfig, conn)
+	if serverError != nil {
+		conn.Close()
+		return nil, serverError
+	}
+
+	return serverConn, nil
 }
 
 // Close closes the transport listener.
@@ -104,11 +123,6 @@ func (config ServerConfig) Listen(address string) (net.Listener, error) {
 
 // Dial connects to the address on the named network
 func (config ClientConfig) Dial(address string) (net.Conn, error) {
-	conn, dialErr := net.Dial("tcp", address)
-	if dialErr != nil {
-		return nil, dialErr
-	}
-
 	host, portString, splitError := net.SplitHostPort(config.Address)
 	if splitError != nil {
 		return nil, splitError
@@ -126,6 +140,19 @@ func (config ClientConfig) Dial(address string) (net.Conn, error) {
 	keyBytes, keyError := hex.DecodeString(config.ServerPersistentPublicKey)
 	if keyError != nil {
 		return nil, keyError
+	}
+
+	publicKey := darkstar.BytesToPublicKey(keyBytes)
+
+	keyCheckError := CheckPublicKey(publicKey)
+	if keyCheckError != nil {
+		return nil, keyCheckError
+	}
+
+	dialTimeout := time.Minute * 5
+	conn, dialErr := net.DialTimeout("tcp", address, dialTimeout)
+	if dialErr != nil {
+		return nil, dialErr
 	}
 
 	replicantConfig := getClientConfig(host, port, keyBytes)
@@ -159,12 +186,6 @@ func NewServer(config ServerConfig, address string, dialer proxy.Dialer) Transpo
 
 // Dial creates outgoing transport connection
 func (transport *TransportClient) Dial() (net.Conn, error) {
-	conn, dialErr := transport.Dialer.Dial("tcp", transport.Address)
-	if dialErr != nil {
-		return nil, dialErr
-	}
-
-	dialConn := conn
 	host, portString, splitError := net.SplitHostPort(transport.Address)
 	if splitError != nil {
 		return nil, splitError
@@ -184,7 +205,23 @@ func (transport *TransportClient) Dial() (net.Conn, error) {
 		return nil, keyError
 	}
 
+	publicKey := darkstar.BytesToPublicKey(keyBytes)
+
+	keyCheckError := CheckPublicKey(publicKey)
+	if keyCheckError != nil {
+		return nil, keyCheckError
+	}
+
 	replicantConfig := getClientConfig(host, port, keyBytes)
+
+	dialTimeout := time.Minute * 5
+	conn, dialErr := net.DialTimeout("tcp", transport.Address, dialTimeout)
+	if dialErr != nil {
+		return nil, dialErr
+	}
+
+	dialConn := conn
+
 	transportConn, err := NewClientConnection(replicantConfig, conn)
 
 	if err != nil {
@@ -261,4 +298,41 @@ func getServerConfig(host string, port int, serverPrivateKey []byte) replicant.S
 	}
 
 	return serverConfig
+}
+
+func CheckPrivateKey(privKey crypto.PrivateKey) (success bool) {
+	defer func() {
+		if panicError := recover(); panicError != nil {
+			success = false
+		} else {
+			success = true
+		}
+	}()
+	
+	keyExchange := ecdh.Generic(elliptic.P256())
+	_, pubKey, keyError := keyExchange.GenerateKey(rand.Reader)
+	if keyError != nil {
+		success = false
+		return
+	}
+
+	// verify that the given key bytes are on the chosen elliptic curve
+	success = keyExchange.ComputeSecret(privKey, pubKey) != nil
+	return 
+}
+
+func CheckPublicKey(pubkey crypto.PublicKey) (keyError error) {
+	defer func() {
+		if panicError := recover(); panicError != nil {
+			keyError = errors.New("panicked on public key check")
+		} else {
+			keyError = nil
+		}
+	}()
+
+	// verify that the given key bytes are on the chosen elliptic curve
+	keyExchange := ecdh.Generic(elliptic.P256())
+	result := keyExchange.Check(pubkey)
+	keyError = result
+	return 
 }
