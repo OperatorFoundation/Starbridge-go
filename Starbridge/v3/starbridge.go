@@ -325,9 +325,7 @@ func CheckPublicKey(pubkey crypto.PublicKey) (keyError error) {
 	defer func() {
 		if panicError := recover(); panicError != nil {
 			keyError = errors.New("panicked on public key check")
-		} else {
-			keyError = nil
-		}
+		} 
 	}()
 
 	// verify that the given key bytes are on the chosen elliptic curve
