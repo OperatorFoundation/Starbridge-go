@@ -3,7 +3,7 @@ module github.com/OperatorFoundation/Starbridge-go/Starbridge/v3
 go 1.17
 
 require (
-	github.com/OperatorFoundation/Replicant-go/Replicant/v3 v3.0.7
+	github.com/OperatorFoundation/Replicant-go/Replicant/v3 v3.0.8
 	github.com/OperatorFoundation/go-shadowsocks2 v1.1.11
 	github.com/OperatorFoundation/shapeshifter-ipc/v3 v3.0.0
 	github.com/aead/ecdh v0.2.0
