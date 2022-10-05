@@ -337,32 +337,36 @@ func CheckPublicKey(pubkey crypto.PublicKey) (keyError error) {
 	return 
 }
 
-func GenerateKeys() (publicKeyHex, privateKeyHex *string) {
+func GenerateKeys() (publicKeyHex, privateKeyHex *string, keyError error) {
 	keyExchange := ecdh.Generic(elliptic.P256())
 	clientEphemeralPrivateKey, clientEphemeralPublicKeyPoint, keyError := keyExchange.GenerateKey(rand.Reader)
 	if keyError != nil {
-		return nil, nil
+		return nil, nil, keyError
 	}
 
 	privateKeyBytes, ok := clientEphemeralPrivateKey.([]byte)
 	if !ok {
-		return nil, nil
+		return nil, nil, errors.New("failed to convert privateKey to bytes")
 	}
 
 	publicKeyBytes, keyByteError := darkstar.PublicKeyToBytes(clientEphemeralPublicKeyPoint)
 	if keyByteError != nil {
-		return nil, nil
+		return nil, nil, keyByteError
 	}
 
 	privateKey := hex.EncodeToString(privateKeyBytes)
 	publicKey := hex.EncodeToString(publicKeyBytes)
-	return &publicKey, &privateKey
+	return &publicKey, &privateKey, nil
 }
 
-func GenerateNewConfigPair(serverHost string, serverPort int) (ServerConfig, ClientConfig) {
+func GenerateNewConfigPair(serverHost string, serverPort int) (*ServerConfig, *ClientConfig, error) {
 	portString := strconv.Itoa(serverPort)
 	address := serverHost + ":" + portString
-	publicKey, privateKey := GenerateKeys()
+	publicKey, privateKey, keyError := GenerateKeys()
+	if keyError != nil {
+		return nil, nil, keyError
+	}
+
 	serverConfig := ServerConfig {
 		ServerPersistentPrivateKey: *privateKey,
 	}
@@ -372,31 +376,34 @@ func GenerateNewConfigPair(serverHost string, serverPort int) (ServerConfig, Cli
 		ServerPersistentPublicKey: *publicKey,
 	}
 
-	return serverConfig, clientConfig
+	return &serverConfig, &clientConfig, nil
 }
 
-func GenerateConfigFiles(serverHost string, serverPort int) {
-	serverConfig, clientConfig := GenerateNewConfigPair(serverHost, serverPort)
-
-	clientConfigBytes, marshalError := json.Marshal(clientConfig)
-	if marshalError != nil {
-		return 
+func GenerateConfigFiles(serverHost string, serverPort int) error {
+	serverConfig, clientConfig, configError := GenerateNewConfigPair(serverHost, serverPort)
+	if configError != nil {
+		return configError
 	}
 
-	serverConfigBytes, marshalError := json.Marshal(serverConfig)
-	if marshalError != nil {
-		return
+	clientConfigBytes, clientMarshalError := json.Marshal(clientConfig)
+	if clientMarshalError != nil {
+		return clientMarshalError
+	}
+
+	serverConfigBytes, serverMarshalError := json.Marshal(serverConfig)
+	if serverMarshalError != nil {
+		return serverMarshalError
 	}
 
 	serverConfigWriteError := ioutil.WriteFile("StarbridgeServerConfig.json", serverConfigBytes, 0644)
 	if serverConfigWriteError != nil {
-		println("Failed to write server configuration file")
-		return
+		return serverConfigWriteError
 	}
 
 	clientConfigWriteError := ioutil.WriteFile("StarbridgeClientConfig.json", clientConfigBytes, 0644)
 	if clientConfigWriteError != nil {
-		println("Failed to write client configuration file")
-		return
+		return clientConfigWriteError
 	}
+
+	return nil
 }

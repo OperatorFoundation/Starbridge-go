@@ -13,7 +13,11 @@ import (
 func TestStarbridge(t *testing.T) {
 	addr := "127.0.0.1:1234"
 
-	serverConfig, clientConfig := GenerateNewConfigPair("127.0.0.1", 1234)
+	serverConfig, clientConfig, configError := GenerateNewConfigPair("127.0.0.1", 1234)
+	if configError != nil {
+		t.Fail()
+		return
+	}
 
 	listener, listenError := serverConfig.Listen(addr)
 	if listenError != nil {
@@ -87,7 +91,10 @@ func TestStarbridge(t *testing.T) {
 }
 
 func TestConfigFileGenerate(t *testing.T) {
-	GenerateConfigFiles("127.0.0.1", 1234)
+	configError := GenerateConfigFiles("127.0.0.1", 1234)
+	if configError != nil {
+		t.Fail()
+	}
 }
 
 func TestKeyVerificationGoodKeys(t *testing.T) {
