@@ -5,7 +5,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net"
 	"strconv"
 	"time"
@@ -355,4 +357,46 @@ func GenerateKeys() (publicKeyHex, privateKeyHex *string) {
 	privateKey := hex.EncodeToString(privateKeyBytes)
 	publicKey := hex.EncodeToString(publicKeyBytes)
 	return &publicKey, &privateKey
+}
+
+func GenerateNewConfigPair(serverHost string, serverPort int) (ServerConfig, ClientConfig) {
+	portString := strconv.Itoa(serverPort)
+	address := serverHost + ":" + portString
+	publicKey, privateKey := GenerateKeys()
+	serverConfig := ServerConfig {
+		ServerPersistentPrivateKey: *privateKey,
+	}
+
+	clientConfig := ClientConfig{
+		Address: address,
+		ServerPersistentPublicKey: *publicKey,
+	}
+
+	return serverConfig, clientConfig
+}
+
+func GenerateConfigFiles(serverHost string, serverPort int) {
+	serverConfig, clientConfig := GenerateNewConfigPair(serverHost, serverPort)
+
+	clientConfigBytes, marshalError := json.Marshal(clientConfig)
+	if marshalError != nil {
+		return 
+	}
+
+	serverConfigBytes, marshalError := json.Marshal(serverConfig)
+	if marshalError != nil {
+		return
+	}
+
+	serverConfigWriteError := ioutil.WriteFile("StarbridgeServerConfig.json", serverConfigBytes, 0644)
+	if serverConfigWriteError != nil {
+		println("Failed to write server configuration file")
+		return
+	}
+
+	clientConfigWriteError := ioutil.WriteFile("StarbridgeClientConfig.json", clientConfigBytes, 0644)
+	if clientConfigWriteError != nil {
+		println("Failed to write client configuration file")
+		return
+	}
 }

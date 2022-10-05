@@ -13,13 +13,7 @@ import (
 func TestStarbridge(t *testing.T) {
 	addr := "127.0.0.1:1234"
 
-	clientConfig := ClientConfig{
-		Address:                   addr,
-		ServerPersistentPublicKey: "d089c225ef8cda8d477a586f062b31a756270124d94944e458edf1a9e1e41ed6",
-	}
-	serverConfig := ServerConfig{
-		ServerPersistentPrivateKey: "dd5e9e88d13e66017eb2087b128c1009539d446208f86173e30409a898ada148",
-	}
+	serverConfig, clientConfig := GenerateNewConfigPair("127.0.0.1", 1234)
 
 	listener, listenError := serverConfig.Listen(addr)
 	if listenError != nil {
@@ -90,6 +84,10 @@ func TestStarbridge(t *testing.T) {
 	fmt.Printf("number of bytes read on client: %d\n", bytesRead)
 
 	_ = clientConn.Close()
+}
+
+func TestConfigFileGenerate(t *testing.T) {
+	GenerateConfigFiles("127.0.0.1", 1234)
 }
 
 func TestKeyVerificationGoodKeys(t *testing.T) {
