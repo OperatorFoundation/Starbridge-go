@@ -334,3 +334,25 @@ func CheckPublicKey(pubkey crypto.PublicKey) (keyError error) {
 	keyError = result
 	return 
 }
+
+func GenerateKeys() (publicKeyHex, privateKeyHex *string) {
+	keyExchange := ecdh.Generic(elliptic.P256())
+	clientEphemeralPrivateKey, clientEphemeralPublicKeyPoint, keyError := keyExchange.GenerateKey(rand.Reader)
+	if keyError != nil {
+		return nil, nil
+	}
+
+	privateKeyBytes, ok := clientEphemeralPrivateKey.([]byte)
+	if !ok {
+		return nil, nil
+	}
+
+	publicKeyBytes, keyByteError := darkstar.PublicKeyToBytes(clientEphemeralPublicKeyPoint)
+	if keyByteError != nil {
+		return nil, nil
+	}
+
+	privateKey := hex.EncodeToString(privateKeyBytes)
+	publicKey := hex.EncodeToString(publicKeyBytes)
+	return &publicKey, &privateKey
+}
