@@ -126,3 +126,14 @@ Close the client connection
  ```
   
 The success of the test can be further verified by using a program like Wireshark to check the bytes received during the test.  If the test was successful, there will be an SMTP conversation, followed by some encrypted data on the data stream
+
+## Config Files
+
+To generate and save a server and client config pair to your project's directory:
+
+```
+	configError := GenerateConfigFiles(<host>, <port>)
+	if configError != nil {
+		// handle error
+	}
+```
