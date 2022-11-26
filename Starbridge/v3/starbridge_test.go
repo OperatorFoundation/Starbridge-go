@@ -11,15 +11,13 @@ import (
 )
 
 func TestStarbridge(t *testing.T) {
-	addr := "127.0.0.1:1234"
-
-	serverConfig, clientConfig, configError := GenerateNewConfigPair("127.0.0.1", 1234)
+	serverConfig, clientConfig, configError := GenerateNewConfigPair("127.0.0.1:1234")
 	if configError != nil {
 		t.Fail()
 		return
 	}
 
-	listener, listenError := serverConfig.Listen(addr)
+	listener, listenError := serverConfig.Listen()
 	if listenError != nil {
 		fmt.Println(listenError)
 		t.Fail()
@@ -62,7 +60,7 @@ func TestStarbridge(t *testing.T) {
 		_ = listener.Close()
 	}()
 
-	clientConn, clientConnError := clientConfig.Dial(addr)
+	clientConn, clientConnError := clientConfig.Dial()
 	if clientConnError != nil {
 		fmt.Println(clientConnError)
 		t.Fail()
@@ -91,7 +89,7 @@ func TestStarbridge(t *testing.T) {
 }
 
 func TestConfigFileGenerate(t *testing.T) {
-	configError := GenerateConfigFiles("127.0.0.1", 1234)
+	configError := GenerateConfigFiles("127.0.0.1:1234")
 	if configError != nil {
 		t.Fail()
 	}
@@ -117,21 +115,7 @@ func TestKeyVerificationBadPublicKey(t *testing.T) {
 	publicKey := ecdh.Point{big.NewInt(9), big.NewInt(100)}
 
 	keyError := CheckPublicKey(publicKey)
-	if keyError != nil {
-		t.Fail()
-	}
-}
-
-func TestKeyVerificationBadPrivateKey(t *testing.T) {
-	keyExchange := ecdh.Generic(elliptic.P521()) 
-	privateKey, _, keyError := keyExchange.GenerateKey(rand.Reader)
-	if keyError != nil {
-		t.Fail()
-	}
-
-	result := CheckPrivateKey(privateKey)
-
-	if !result {
+	if keyError == nil {
 		t.Fail()
 	}
 }

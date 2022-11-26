@@ -4,19 +4,20 @@ import (
 	"crypto"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	replicant "github.com/OperatorFoundation/Replicant-go/Replicant/v3"
 	"github.com/OperatorFoundation/Replicant-go/Replicant/v3/polish"
 	"github.com/OperatorFoundation/Replicant-go/Replicant/v3/toneburst"
 	"github.com/OperatorFoundation/go-shadowsocks2/darkstar"
-	pt "github.com/OperatorFoundation/shapeshifter-ipc/v3"
 	"github.com/aead/ecdh"
 	"golang.org/x/net/proxy"
 )
@@ -36,12 +37,15 @@ type TransportServer struct {
 }
 
 type ClientConfig struct {
-	Address                   string `json:"serverAddress"`
+	ServerAddress             string `json:"serverAddress"`
 	ServerPersistentPublicKey string `json:"serverPersistentPublicKey"`
+	Transport 				  string `json:"transport"`
 }
 
 type ServerConfig struct {
+	ServerAddress              string `json:"serverAddress"`
 	ServerPersistentPrivateKey string `json:"serverPersistentPrivateKey"`
+	Transport 				   string `json:"transport"`
 }
 
 type starbridgeTransportListener struct {
@@ -62,21 +66,7 @@ func (listener *starbridgeTransportListener) Addr() net.Addr {
 
 // Accept waits for and returns the next connection to the listener.
 func (listener *starbridgeTransportListener) Accept() (net.Conn, error) {
-	host, portString, splitError := net.SplitHostPort(listener.address)
-	if splitError != nil {
-		return nil, splitError
-	}
-
-	port, intError := strconv.Atoi(portString)
-	if intError != nil {
-		return nil, intError
-	}
-
-	if len(listener.config.ServerPersistentPrivateKey) != 64 {
-		return nil, errors.New("incorrect key size")
-	}
-
-	keyBytes, keyError := hex.DecodeString(listener.config.ServerPersistentPrivateKey)
+	keyBytes, keyError := base64.StdEncoding.DecodeString(listener.config.ServerPersistentPrivateKey)
 	if keyError != nil {
 		return nil, keyError
 	}
@@ -86,7 +76,7 @@ func (listener *starbridgeTransportListener) Accept() (net.Conn, error) {
 		return nil, errors.New("bad private key")
 	}
 
-	replicantConfig := getServerConfig(host, port, keyBytes)
+	replicantConfig := getServerConfig(listener.address, keyBytes)
 
 	conn, err := listener.listener.Accept()
 	if err != nil {
@@ -109,8 +99,12 @@ func (listener *starbridgeTransportListener) Close() error {
 }
 
 // Listen checks for a working connection
-func (config ServerConfig) Listen(address string) (net.Listener, error) {
-	addr, resolveErr := pt.ResolveAddr(address)
+func (config ServerConfig) Listen() (net.Listener, error) {
+	if config.Transport != "starbridge" {
+		return nil, errors.New("incorrect transport name")
+	}
+
+	addr, resolveErr := ResolveAddr(config.ServerAddress)
 	if resolveErr != nil {
 		return nil, resolveErr
 	}
@@ -120,26 +114,16 @@ func (config ServerConfig) Listen(address string) (net.Listener, error) {
 		return nil, err
 	}
 
-	return newStarbridgeTransportListener(address, ln, config), nil
+	return newStarbridgeTransportListener(config.ServerAddress, ln, config), nil
 }
 
 // Dial connects to the address on the named network
-func (config ClientConfig) Dial(address string) (net.Conn, error) {
-	host, portString, splitError := net.SplitHostPort(config.Address)
-	if splitError != nil {
-		return nil, splitError
+func (config ClientConfig) Dial() (net.Conn, error) {
+	if config.Transport != "starbridge" {
+		return nil, errors.New("incorrect transport name")
 	}
 
-	port, intError := strconv.Atoi(portString)
-	if intError != nil {
-		return nil, intError
-	}
-
-	if len(config.ServerPersistentPublicKey) != 64 {
-		return nil, errors.New("incorrect key size")
-	}
-
-	keyBytes, keyError := hex.DecodeString(config.ServerPersistentPublicKey)
+	keyBytes, keyError := base64.StdEncoding.DecodeString(config.ServerPersistentPublicKey)
 	if keyError != nil {
 		return nil, keyError
 	}
@@ -152,12 +136,12 @@ func (config ClientConfig) Dial(address string) (net.Conn, error) {
 	}
 
 	dialTimeout := time.Minute * 5
-	conn, dialErr := net.DialTimeout("tcp", address, dialTimeout)
+	conn, dialErr := net.DialTimeout("tcp", config.ServerAddress, dialTimeout)
 	if dialErr != nil {
 		return nil, dialErr
 	}
 
-	replicantConfig := getClientConfig(host, port, keyBytes)
+	replicantConfig := getClientConfig(config.ServerAddress, keyBytes)
 	transportConn, err := NewClientConnection(replicantConfig, conn)
 
 	if err != nil {
@@ -173,7 +157,7 @@ func (config ClientConfig) Dial(address string) (net.Conn, error) {
 func NewClient(config ClientConfig, dialer proxy.Dialer) TransportClient {
 	return TransportClient{
 		Config:  config,
-		Address: config.Address,
+		Address: config.ServerAddress,
 		Dialer:  dialer,
 	}
 }
@@ -188,21 +172,7 @@ func NewServer(config ServerConfig, address string, dialer proxy.Dialer) Transpo
 
 // Dial creates outgoing transport connection
 func (transport *TransportClient) Dial() (net.Conn, error) {
-	host, portString, splitError := net.SplitHostPort(transport.Address)
-	if splitError != nil {
-		return nil, splitError
-	}
-
-	port, intError := strconv.Atoi(portString)
-	if intError != nil {
-		return nil, intError
-	}
-
-	if len(transport.Config.ServerPersistentPublicKey) != 64 {
-		return nil, errors.New("incorrect key size")
-	}
-
-	keyBytes, keyError := hex.DecodeString(transport.Config.ServerPersistentPublicKey)
+	keyBytes, keyError := base64.StdEncoding.DecodeString(transport.Config.ServerPersistentPublicKey)
 	if keyError != nil {
 		return nil, keyError
 	}
@@ -214,7 +184,7 @@ func (transport *TransportClient) Dial() (net.Conn, error) {
 		return nil, keyCheckError
 	}
 
-	replicantConfig := getClientConfig(host, port, keyBytes)
+	replicantConfig := getClientConfig(transport.Address, keyBytes)
 
 	dialTimeout := time.Minute * 5
 	conn, dialErr := net.DialTimeout("tcp", transport.Address, dialTimeout)
@@ -235,7 +205,7 @@ func (transport *TransportClient) Dial() (net.Conn, error) {
 }
 
 func (transport *TransportServer) Listen() (net.Listener, error) {
-	addr, resolveErr := pt.ResolveAddr(transport.Address)
+	addr, resolveErr := ResolveAddr(transport.Address)
 	if resolveErr != nil {
 		return nil, resolveErr
 	}
@@ -264,15 +234,14 @@ func NewReplicantServerConnectionState(config replicant.ServerConfig, polishServ
 	return replicant.NewReplicantServerConnectionState(config, polishServer, conn)
 }
 
-func getClientConfig(host string, port int, serverPublicKey []byte) replicant.ClientConfig {
+func getClientConfig(serverAddress string, serverPublicKey []byte) replicant.ClientConfig {
 	polishClientConfig := polish.DarkStarPolishClientConfig{
-		Host:            host,
-		Port:            port,
-		ServerPublicKey: serverPublicKey,
+		ServerAddress: serverAddress,
+		ServerPublicKey: base64.StdEncoding.EncodeToString(serverPublicKey),
 	}
 
 	toneburstClientConfig := toneburst.StarburstConfig{
-		FunctionName: "SMTPClient",
+		Mode: "SMTPClient",
 	}
 
 	clientConfig := replicant.ClientConfig{
@@ -283,15 +252,14 @@ func getClientConfig(host string, port int, serverPublicKey []byte) replicant.Cl
 	return clientConfig
 }
 
-func getServerConfig(host string, port int, serverPrivateKey []byte) replicant.ServerConfig {
+func getServerConfig(serverAddress string, serverPrivateKey []byte) replicant.ServerConfig {
 	polishServerConfig := polish.DarkStarPolishServerConfig{
-		Host:             host,
-		Port:             port,
-		ServerPrivateKey: serverPrivateKey,
+		ServerAddress: serverAddress,
+		ServerPrivateKey: base64.StdEncoding.EncodeToString(serverPrivateKey),
 	}
 
 	toneburstServerConfig := toneburst.StarburstConfig{
-		FunctionName: "SMTPServer",
+		Mode: "SMTPServer",
 	}
 
 	serverConfig := replicant.ServerConfig{
@@ -337,7 +305,7 @@ func CheckPublicKey(pubkey crypto.PublicKey) (keyError error) {
 	return 
 }
 
-func GenerateKeys() (publicKeyHex, privateKeyHex *string, keyError error) {
+func GenerateKeys() (publicKeyString, privateKeyString *string, keyError error) {
 	keyExchange := ecdh.Generic(elliptic.P256())
 	clientEphemeralPrivateKey, clientEphemeralPublicKeyPoint, keyError := keyExchange.GenerateKey(rand.Reader)
 	if keyError != nil {
@@ -354,33 +322,34 @@ func GenerateKeys() (publicKeyHex, privateKeyHex *string, keyError error) {
 		return nil, nil, keyByteError
 	}
 
-	privateKey := hex.EncodeToString(privateKeyBytes)
-	publicKey := hex.EncodeToString(publicKeyBytes)
+	privateKey := base64.StdEncoding.EncodeToString(privateKeyBytes)
+	publicKey := base64.StdEncoding.EncodeToString(publicKeyBytes)
 	return &publicKey, &privateKey, nil
 }
 
-func GenerateNewConfigPair(serverHost string, serverPort int) (*ServerConfig, *ClientConfig, error) {
-	portString := strconv.Itoa(serverPort)
-	address := serverHost + ":" + portString
+func GenerateNewConfigPair(address string) (*ServerConfig, *ClientConfig, error) {
 	publicKey, privateKey, keyError := GenerateKeys()
 	if keyError != nil {
 		return nil, nil, keyError
 	}
 
 	serverConfig := ServerConfig {
+		ServerAddress: address,
 		ServerPersistentPrivateKey: *privateKey,
+		Transport: "starbridge",
 	}
 
 	clientConfig := ClientConfig{
-		Address: address,
+		ServerAddress: address,
 		ServerPersistentPublicKey: *publicKey,
+		Transport: "starbridge",
 	}
 
 	return &serverConfig, &clientConfig, nil
 }
 
-func GenerateConfigFiles(serverHost string, serverPort int) error {
-	serverConfig, clientConfig, configError := GenerateNewConfigPair(serverHost, serverPort)
+func GenerateConfigFiles(address string) error {
+	serverConfig, clientConfig, configError := GenerateNewConfigPair(address)
 	if configError != nil {
 		return configError
 	}
@@ -406,4 +375,45 @@ func GenerateConfigFiles(serverHost string, serverPort int) error {
 	}
 
 	return nil
+}
+
+// Resolve an address string into a net.TCPAddr. We are a bit more strict than
+// net.ResolveTCPAddr; we don't allow an empty host or port, and the host part
+// must be a literal IP address.
+func ResolveAddr(addrStr string) (*net.TCPAddr, error) {
+	ipStr, portStr, err := net.SplitHostPort(addrStr)
+	if err != nil {
+		// Before the fixing of bug #7011, tor doesn't put brackets around IPv6
+		// addresses. Split after the last colon, assuming it is a port
+		// separator, and try adding the brackets.
+		parts := strings.Split(addrStr, ":")
+		if len(parts) <= 2 {
+			return nil, err
+		}
+		addrStr := "[" + strings.Join(parts[:len(parts)-1], ":") + "]:" + parts[len(parts)-1]
+		ipStr, portStr, err = net.SplitHostPort(addrStr)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if ipStr == "" {
+		return nil, net.InvalidAddrError(fmt.Sprintf("address string %q lacks a host part", addrStr))
+	}
+	if portStr == "" {
+		return nil, net.InvalidAddrError(fmt.Sprintf("address string %q lacks a port part", addrStr))
+	}
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return nil, net.InvalidAddrError(fmt.Sprintf("not an IP string: %q", ipStr))
+	}
+	port, err := parsePort(portStr)
+	if err != nil {
+		return nil, err
+	}
+	return &net.TCPAddr{IP: ip, Port: port}, nil
+}
+
+func parsePort(portStr string) (int, error) {
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	return int(port), err
 }

@@ -1,2 +1,5 @@
 
 *.json
+Starbridge/v3/go.sum
+Starbridge/v3/bloomfilter.gob
+Starbridge/.DS_Store
