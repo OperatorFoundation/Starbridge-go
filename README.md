@@ -66,7 +66,7 @@ Create a Starbridge client config
 ```
     clientConfig := ClientConfig{
 		  Address:                   <address>,
-		  ServerPersistentPublicKey: <ServerPersistentPublicKey>,
+		  ServerPublicKey: <ServerPublicKey>,
 	  }
 ```
 
@@ -74,7 +74,7 @@ Create a Starbridge server config
 
 ```
 serverConfig := ServerConfig{
-		ServerPersistentPrivateKey: <ServerPersistentPrivateKey>,
+		ServerPrivateKey: <ServerPrivateKey>,
 	}
 ```
 

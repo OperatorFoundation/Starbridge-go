@@ -88,6 +88,90 @@ func TestStarbridge(t *testing.T) {
 	_ = clientConn.Close()
 }
 
+func TestStarbridgeCustomConfig(t *testing.T) {
+	serverConfig := ServerConfig{
+		ServerAddress:    "127.0.0.1:1234",
+		ServerPrivateKey: "RaHouPFVOazVSqInoMm8BSO9o/7J493y4cUVofmwXAU=",
+		Transport:        "starbridge",
+	}
+
+	clientConfig := ClientConfig{
+		ServerAddress:   "127.0.0.1:1234",
+		ServerPublicKey: "6LukZ8KqZLQ7eOdaTVFkBVqMA8NS1AUxwqG17L/kHnQ=",
+		Transport:       "starbridge",
+	}
+
+	listener, listenError := serverConfig.Listen()
+	if listenError != nil {
+		fmt.Println(listenError)
+		t.Fail()
+		return
+	}
+
+	go func() {
+		fmt.Printf("listener type: %T\n", listener)
+		serverConn, serverConnError := listener.Accept()
+		if serverConnError != nil {
+			fmt.Println(serverConnError)
+			t.Fail()
+			return
+		}
+		if serverConn == nil {
+			fmt.Println("serverConn is nil")
+			t.Fail()
+			return
+		}
+
+		buffer := make([]byte, 4)
+		numBytesRead, readError := serverConn.Read(buffer)
+		if readError != nil {
+			fmt.Println(readError)
+			t.Fail()
+			return
+		}
+		fmt.Printf("number of bytes read on server: %d\n", numBytesRead)
+		fmt.Printf("serverConn type: %T\n", serverConn)
+
+		// Send a response back to person contacting us.
+		numBytesWritten, writeError := serverConn.Write([]byte{0xFF, 0xFF, 0xFF, 0xFF})
+		if writeError != nil {
+			fmt.Println(writeError)
+			t.Fail()
+			return
+		}
+		fmt.Printf("number of bytes written on server: %d\n", numBytesWritten)
+
+		_ = listener.Close()
+	}()
+
+	clientConn, clientConnError := clientConfig.Dial()
+	if clientConnError != nil {
+		fmt.Println(clientConnError)
+		t.Fail()
+		return
+	}
+
+	writeBytes := []byte{0x0A, 0x11, 0xB0, 0xB1}
+	bytesWritten, writeError := clientConn.Write(writeBytes)
+	if writeError != nil {
+		fmt.Println(writeError)
+		t.Fail()
+		return
+	}
+	fmt.Printf("number of bytes written on client: %d\n", bytesWritten)
+
+	readBuffer := make([]byte, 4)
+	bytesRead, readError := clientConn.Read(readBuffer)
+	if readError != nil {
+		fmt.Println(readError)
+		t.Fail()
+		return
+	}
+	fmt.Printf("number of bytes read on client: %d\n", bytesRead)
+
+	_ = clientConn.Close()
+}
+
 func TestConfigFileGenerate(t *testing.T) {
 	configError := GenerateConfigFiles("127.0.0.1:1234")
 	if configError != nil {
@@ -96,7 +180,7 @@ func TestConfigFileGenerate(t *testing.T) {
 }
 
 func TestKeyVerificationGoodKeys(t *testing.T) {
-	keyExchange := ecdh.Generic(elliptic.P256()) 
+	keyExchange := ecdh.Generic(elliptic.P256())
 	privateKey, publicKey, keyError := keyExchange.GenerateKey(rand.Reader)
 	if keyError != nil {
 		t.Fail()

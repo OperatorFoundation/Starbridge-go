@@ -26,26 +26,26 @@ type TransportClient struct {
 	Config  ClientConfig
 	Address string
 	// TODO: Dialer can be removed later (both here and in dispatcher)
-	Dialer  proxy.Dialer
+	Dialer proxy.Dialer
 }
 
 type TransportServer struct {
 	Config  ServerConfig
 	Address string
 	// TODO: Dialer can be removed later (both here and in dispatcher)
-	Dialer  proxy.Dialer
+	Dialer proxy.Dialer
 }
 
 type ClientConfig struct {
-	ServerAddress             string `json:"serverAddress"`
-	ServerPersistentPublicKey string `json:"serverPersistentPublicKey"`
-	Transport 				  string `json:"transport"`
+	ServerAddress   string `json:"serverAddress"`
+	ServerPublicKey string `json:"serverPublicKey"`
+	Transport       string `json:"transport"`
 }
 
 type ServerConfig struct {
-	ServerAddress              string `json:"serverAddress"`
-	ServerPersistentPrivateKey string `json:"serverPersistentPrivateKey"`
-	Transport 				   string `json:"transport"`
+	ServerAddress    string `json:"serverAddress"`
+	ServerPrivateKey string `json:"serverPrivateKey"`
+	Transport        string `json:"transport"`
 }
 
 type starbridgeTransportListener struct {
@@ -66,7 +66,7 @@ func (listener *starbridgeTransportListener) Addr() net.Addr {
 
 // Accept waits for and returns the next connection to the listener.
 func (listener *starbridgeTransportListener) Accept() (net.Conn, error) {
-	keyBytes, keyError := base64.StdEncoding.DecodeString(listener.config.ServerPersistentPrivateKey)
+	keyBytes, keyError := base64.StdEncoding.DecodeString(listener.config.ServerPrivateKey)
 	if keyError != nil {
 		return nil, keyError
 	}
@@ -123,7 +123,7 @@ func (config ClientConfig) Dial() (net.Conn, error) {
 		return nil, errors.New("incorrect transport name")
 	}
 
-	keyBytes, keyError := base64.StdEncoding.DecodeString(config.ServerPersistentPublicKey)
+	keyBytes, keyError := base64.StdEncoding.DecodeString(config.ServerPublicKey)
 	if keyError != nil {
 		return nil, keyError
 	}
@@ -172,7 +172,7 @@ func NewServer(config ServerConfig, address string, dialer proxy.Dialer) Transpo
 
 // Dial creates outgoing transport connection
 func (transport *TransportClient) Dial() (net.Conn, error) {
-	keyBytes, keyError := base64.StdEncoding.DecodeString(transport.Config.ServerPersistentPublicKey)
+	keyBytes, keyError := base64.StdEncoding.DecodeString(transport.Config.ServerPublicKey)
 	if keyError != nil {
 		return nil, keyError
 	}
@@ -236,7 +236,7 @@ func NewReplicantServerConnectionState(config replicant.ServerConfig, polishServ
 
 func getClientConfig(serverAddress string, serverPublicKey []byte) replicant.ClientConfig {
 	polishClientConfig := polish.DarkStarPolishClientConfig{
-		ServerAddress: serverAddress,
+		ServerAddress:   serverAddress,
 		ServerPublicKey: base64.StdEncoding.EncodeToString(serverPublicKey),
 	}
 
@@ -254,7 +254,7 @@ func getClientConfig(serverAddress string, serverPublicKey []byte) replicant.Cli
 
 func getServerConfig(serverAddress string, serverPrivateKey []byte) replicant.ServerConfig {
 	polishServerConfig := polish.DarkStarPolishServerConfig{
-		ServerAddress: serverAddress,
+		ServerAddress:    serverAddress,
 		ServerPrivateKey: base64.StdEncoding.EncodeToString(serverPrivateKey),
 	}
 
@@ -278,7 +278,7 @@ func CheckPrivateKey(privKey crypto.PrivateKey) (success bool) {
 			success = true
 		}
 	}()
-	
+
 	keyExchange := ecdh.Generic(elliptic.P256())
 	_, pubKey, keyError := keyExchange.GenerateKey(rand.Reader)
 	if keyError != nil {
@@ -288,21 +288,21 @@ func CheckPrivateKey(privKey crypto.PrivateKey) (success bool) {
 
 	// verify that the given key bytes are on the chosen elliptic curve
 	success = keyExchange.ComputeSecret(privKey, pubKey) != nil
-	return 
+	return
 }
 
 func CheckPublicKey(pubkey crypto.PublicKey) (keyError error) {
 	defer func() {
 		if panicError := recover(); panicError != nil {
 			keyError = errors.New("panicked on public key check")
-		} 
+		}
 	}()
 
 	// verify that the given key bytes are on the chosen elliptic curve
 	keyExchange := ecdh.Generic(elliptic.P256())
 	result := keyExchange.Check(pubkey)
 	keyError = result
-	return 
+	return
 }
 
 func GenerateKeys() (publicKeyString, privateKeyString *string, keyError error) {
@@ -333,16 +333,16 @@ func GenerateNewConfigPair(address string) (*ServerConfig, *ClientConfig, error)
 		return nil, nil, keyError
 	}
 
-	serverConfig := ServerConfig {
-		ServerAddress: address,
-		ServerPersistentPrivateKey: *privateKey,
-		Transport: "starbridge",
+	serverConfig := ServerConfig{
+		ServerAddress:    address,
+		ServerPrivateKey: *privateKey,
+		Transport:        "starbridge",
 	}
 
 	clientConfig := ClientConfig{
-		ServerAddress: address,
-		ServerPersistentPublicKey: *publicKey,
-		Transport: "starbridge",
+		ServerAddress:   address,
+		ServerPublicKey: *publicKey,
+		Transport:       "starbridge",
 	}
 
 	return &serverConfig, &clientConfig, nil
