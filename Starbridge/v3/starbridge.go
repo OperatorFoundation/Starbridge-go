@@ -100,7 +100,7 @@ func (listener *starbridgeTransportListener) Close() error {
 
 // Listen checks for a working connection
 func (config ServerConfig) Listen() (net.Listener, error) {
-	if config.Transport != "starbridge" {
+	if config.Transport != "Starbridge" {
 		return nil, errors.New("incorrect transport name")
 	}
 
@@ -119,7 +119,7 @@ func (config ServerConfig) Listen() (net.Listener, error) {
 
 // Dial connects to the address on the named network
 func (config ClientConfig) Dial() (net.Conn, error) {
-	if config.Transport != "starbridge" {
+	if config.Transport != "Starbridge" {
 		return nil, errors.New("incorrect transport name")
 	}
 
@@ -336,13 +336,13 @@ func GenerateNewConfigPair(address string) (*ServerConfig, *ClientConfig, error)
 	serverConfig := ServerConfig{
 		ServerAddress:    address,
 		ServerPrivateKey: *privateKey,
-		Transport:        "starbridge",
+		Transport:        "Starbridge",
 	}
 
 	clientConfig := ClientConfig{
 		ServerAddress:   address,
 		ServerPublicKey: *publicKey,
-		Transport:       "starbridge",
+		Transport:       "Starbridge",
 	}
 
 	return &serverConfig, &clientConfig, nil
