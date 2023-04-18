@@ -17,7 +17,7 @@ If you are an application developer working in the Go programming language, then
 If you are looking for a complete, easy-to-use VPN that incorporates shapeshifting technology and has a graphical user interface, consider [Moonbounce](https://github.com/OperatorFoundation/Moonbounce), an application for macOS which incorporates Shapeshifter without the need to write code or use the command line.
 
 ### Shapeshifter Transports
-The transports implement the Pluggable Transports version 2.1 specification, which is available here: <https://www.pluggabletransports.info/spec/#build> Specifically, they implement the Go Transports API v2.1.
+The transports implement the Go API from the [Pluggable Transports 3.0 specification](https://github.com/Pluggable-Transports/Pluggable-Transports-spec/blob/main/releases/PTSpecV3.0/Pluggable%20Transport%20Specification%20v3.0%20-%20Go%20Transport%20API%20v3.0.md).
 
 The purpose of the transport library is to provide a set of different transports. Each transport implements a different method of shapeshifting network traffic. The goal is for application traffic to be sent over the network in a shapeshifted form that bypasses network filtering, allowing the application to work on networks where it would otherwise be blocked or heavily throttled.
 
