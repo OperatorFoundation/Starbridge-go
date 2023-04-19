@@ -91,13 +91,13 @@ func TestStarbridge(t *testing.T) {
 func TestStarbridgeCustomConfig(t *testing.T) {
 	serverConfig := ServerConfig{
 		ServerAddress:    "127.0.0.1:1234",
-		ServerPrivateKey: "RaHouPFVOazVSqInoMm8BSO9o/7J493y4cUVofmwXAU=",
+		ServerPrivateKey: "",
 		Transport:        "Starbridge",
 	}
 
 	clientConfig := ClientConfig{
 		ServerAddress:   "127.0.0.1:1234",
-		ServerPublicKey: "6LukZ8KqZLQ7eOdaTVFkBVqMA8NS1AUxwqG17L/kHnQ=",
+		ServerPublicKey: "",
 		Transport:       "Starbridge",
 	}
 
