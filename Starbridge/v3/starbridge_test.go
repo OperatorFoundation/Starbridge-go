@@ -3,12 +3,85 @@ package Starbridge
 import (
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"math/big"
+	"net"
+	"net/smtp"
 	"testing"
 
 	"github.com/aead/ecdh"
 )
+
+func TestBadClientSMTP(t *testing.T) {
+	_, priv, err := GenerateKeys()
+	if err != nil {
+		panic(err)
+	}
+
+	serverConfig := ServerConfig{
+		ServerAddress:    "127.0.0.1:2525",
+		ServerPrivateKey: *priv,
+		Transport:        "Starbridge",
+	}
+
+	go func() {
+		if err := listenAndServe(serverConfig); err != nil {
+			fmt.Println("serve error: ", err)
+		}
+	}()
+
+	c, err := smtp.Dial("127.0.0.1:2525")
+	if err != nil {
+		fmt.Println("SMTP Dial error")
+		panic(err)
+	}
+	defer c.Close()
+
+	if err := c.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
+		fmt.Println("StartTLS error")
+		panic(err)
+	}
+}
+
+func listenAndServe(serverConfig ServerConfig) error {
+	l, err := serverConfig.Listen()
+	if err != nil {
+		fmt.Println("Server listen error")
+		panic(err)
+	}
+	defer l.Close()
+
+	acceptErr := make(chan error)
+	go func() {
+		for {
+			conn, err := l.Accept()
+
+			fmt.Println("Accepted a connection!")
+			if err != nil {
+				acceptErr <- err
+				fmt.Println("Listener accept error: ", err)
+				return
+			}
+
+			go func(c net.Conn) {
+				defer c.Close()
+
+				buf := make([]byte, 1024)
+				n, err := conn.Read(buf)
+				if err != nil {
+					fmt.Println("read error: ", err)
+					return
+				}
+
+				fmt.Println("from client: ", base64.StdEncoding.EncodeToString(buf[:n]))
+			}(conn)
+		}
+	}()
+
+	return <-acceptErr
+}
 
 func TestStarbridge(t *testing.T) {
 	serverConfig, clientConfig, configError := GenerateNewConfigPair("127.0.0.1:1234")
