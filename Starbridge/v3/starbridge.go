@@ -46,6 +46,7 @@ type ServerConfig struct {
 	ServerAddress    string `json:"serverAddress"`
 	ServerPrivateKey string `json:"serverPrivateKey"`
 	Transport        string `json:"transport"`
+	BindAddress  	 *string `json:"bindAddress"`
 }
 
 type starbridgeTransportListener struct {
@@ -327,7 +328,7 @@ func GenerateKeys() (publicKeyString, privateKeyString *string, keyError error) 
 	return &publicKey, &privateKey, nil
 }
 
-func GenerateNewConfigPair(address string) (*ServerConfig, *ClientConfig, error) {
+func GenerateNewConfigPair(address string, bindAddress *string) (*ServerConfig, *ClientConfig, error) {
 	publicKey, privateKey, keyError := GenerateKeys()
 	if keyError != nil {
 		return nil, nil, keyError
@@ -337,6 +338,7 @@ func GenerateNewConfigPair(address string) (*ServerConfig, *ClientConfig, error)
 		ServerAddress:    address,
 		ServerPrivateKey: *privateKey,
 		Transport:        "Starbridge",
+		BindAddress: 	  bindAddress,
 	}
 
 	clientConfig := ClientConfig{
@@ -348,8 +350,8 @@ func GenerateNewConfigPair(address string) (*ServerConfig, *ClientConfig, error)
 	return &serverConfig, &clientConfig, nil
 }
 
-func GenerateConfigFiles(address string) error {
-	serverConfig, clientConfig, configError := GenerateNewConfigPair(address)
+func GenerateConfigFiles(address string, bindAddress *string) error {
+	serverConfig, clientConfig, configError := GenerateNewConfigPair(address, bindAddress)
 	if configError != nil {
 		return configError
 	}

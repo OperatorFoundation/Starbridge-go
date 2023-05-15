@@ -84,7 +84,7 @@ func listenAndServe(serverConfig ServerConfig) error {
 }
 
 func TestStarbridge(t *testing.T) {
-	serverConfig, clientConfig, configError := GenerateNewConfigPair("127.0.0.1:1234")
+	serverConfig, clientConfig, configError := GenerateNewConfigPair("127.0.0.1:1234", nil)
 	if configError != nil {
 		t.Fail()
 		return
@@ -246,7 +246,7 @@ func TestStarbridgeCustomConfig(t *testing.T) {
 }
 
 func TestConfigFileGenerate(t *testing.T) {
-	configError := GenerateConfigFiles("127.0.0.1:1234")
+	configError := GenerateConfigFiles("127.0.0.1:1234", nil)
 	if configError != nil {
 		t.Fail()
 	}
