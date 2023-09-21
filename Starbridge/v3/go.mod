@@ -3,8 +3,8 @@ module github.com/OperatorFoundation/Starbridge-go/Starbridge/v3
 go 1.19
 
 require (
-	github.com/OperatorFoundation/Replicant-go/Replicant/v3 v3.0.22
-	github.com/OperatorFoundation/go-shadowsocks2 v1.2.0
+	github.com/OperatorFoundation/Replicant-go/Replicant/v3 v3.0.23
+	github.com/OperatorFoundation/go-shadowsocks2 v1.2.1
 	github.com/aead/ecdh v0.2.0
 	golang.org/x/net v0.15.0
 )
