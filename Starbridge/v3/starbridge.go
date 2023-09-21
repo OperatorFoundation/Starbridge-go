@@ -129,7 +129,7 @@ func (config ClientConfig) Dial() (net.Conn, error) {
 		return nil, keyError
 	}
 
-	publicKey := darkstar.BytesToPublicKey(keyBytes)
+	publicKey := darkstar.KeychainFormatBytesToPublicKey(keyBytes)
 
 	keyCheckError := CheckPublicKey(publicKey)
 	if keyCheckError != nil {
@@ -178,7 +178,7 @@ func (transport *TransportClient) Dial() (net.Conn, error) {
 		return nil, keyError
 	}
 
-	publicKey := darkstar.BytesToPublicKey(keyBytes)
+	publicKey := darkstar.KeychainFormatBytesToPublicKey(keyBytes)
 
 	keyCheckError := CheckPublicKey(publicKey)
 	if keyCheckError != nil {
@@ -318,7 +318,7 @@ func GenerateKeys() (publicKeyString, privateKeyString *string, keyError error) 
 		return nil, nil, errors.New("failed to convert privateKey to bytes")
 	}
 
-	publicKeyBytes, keyByteError := darkstar.PublicKeyToBytes(clientEphemeralPublicKeyPoint)
+	publicKeyBytes, keyByteError := darkstar.PublicKeyToKeychainFormatBytes(clientEphemeralPublicKeyPoint)
 	if keyByteError != nil {
 		return nil, nil, keyByteError
 	}
